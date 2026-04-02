@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FurBaby Social - Application Codebase Analysis</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f7f6f3;
+    --card: #ffffff;
+    --border: #e3e2de;
+    --border-light: #efefed;
+    --text: #37352f;
+    --text-secondary: #6b6b6b;
+    --muted: #9b9a97;
+    --accent: #2eaadc;
+    --accent-bg: rgba(46,170,220,0.08);
+    --green: #0f7b6c;
+    --green-bg: rgba(15,123,108,0.08);
+    --yellow: #cb912f;
+    --yellow-bg: rgba(203,145,47,0.08);
+    --orange: #d9730d;
+    --orange-bg: rgba(217,115,13,0.08);
+    --red: #e03e3e;
+    --red-bg: rgba(224,62,62,0.08);
+    --blue: #2eaadc;
+    --blue-bg: rgba(46,170,220,0.08);
+    --purple: #6940a5;
+    --purple-bg: rgba(105,64,165,0.08);
+    --pink: #ad1a72;
+    --gray: #9b9a97;
+    --gray-bg: rgba(155,154,151,0.08);
+    --notion-brown: #64473a;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px var(--border);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 2rem 4rem 4rem; }
+  @media (max-width: 768px) { .page { padding: 1.5rem 1.25rem; } }
+
+  /* Header - Notion page title style */
+  .header { margin-bottom: 2rem; padding-bottom: 0; }
+  .header .icon { font-size: 3rem; margin-bottom: 0.5rem; }
+  .header h1 { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 0.35rem; }
+  .header p { color: var(--text-secondary); font-size: 1rem; margin-bottom: 0.75rem; }
+  .header .meta { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .header .meta span {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--bg-secondary); color: var(--text-secondary);
+    padding: 0.2rem 0.6rem; border-radius: 3px; font-size: 0.8rem;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 1.5rem 0; }
+
+  /* Score cards */
+  .scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 2rem; }
+  .score-card {
+    background: var(--card); border-radius: 4px; padding: 1rem 1.1rem;
+    box-shadow: var(--shadow); position: relative; overflow: hidden;
+  }
+  .score-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2.5px; }
+  .score-card.critical::before { background: var(--red); }
+  .score-card.high::before { background: var(--orange); }
+  .score-card.medium::before { background: var(--yellow); }
+  .score-card.good::before { background: var(--green); }
+  .score-card .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; margin-bottom: 0.3rem; }
+  .score-card .value { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; }
+  .score-card .value.red { color: var(--red); }
+  .score-card .value.orange { color: var(--orange); }
+  .score-card .value.yellow { color: var(--yellow); }
+  .score-card .value.green { color: var(--green); }
+  .score-card .sub { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card); border-radius: 4px; padding: 1.25rem;
+    box-shadow: var(--shadow);
+  }
+  .card h2 {
+    font-size: 0.95rem; font-weight: 600; margin-bottom: 0.85rem;
+    color: var(--text); display: flex; align-items: center; gap: 0.4rem;
+  }
+  .card h3 { font-size: 0.82rem; font-weight: 600; margin: 0.85rem 0 0.4rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .chart-container { position: relative; height: 280px; }
+  .chart-container.tall { height: 350px; }
+
+  /* Section titles - Notion H2 style */
+  .section-title {
+    font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em;
+    margin: 2.5rem 0 1rem; padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  /* Tables - Notion database style */
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th {
+    text-align: left; padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--border); color: var(--muted);
+    font-weight: 500; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border-light); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg-secondary); }
+
+  /* Badges - Notion tag style */
+  .badge {
+    display: inline-block; padding: 0.1rem 0.5rem; border-radius: 3px;
+    font-size: 0.73rem; font-weight: 500; letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .badge.critical { background: var(--red-bg); color: var(--red); }
+  .badge.high { background: var(--orange-bg); color: var(--orange); }
+  .badge.medium { background: var(--yellow-bg); color: var(--yellow); }
+  .badge.low { background: var(--green-bg); color: var(--green); }
+  .badge.info { background: var(--blue-bg); color: var(--blue); }
+  .badge.none { background: var(--gray-bg); color: var(--gray); }
+
+  /* Progress bars */
+  .progress-row { margin-bottom: 0.65rem; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 0.84rem; margin-bottom: 0.25rem; color: var(--text); }
+  .progress-label span:last-child { color: var(--text-secondary); font-weight: 500; }
+  .progress-bar { height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; }
+  .progress-fill.red { background: var(--red); }
+  .progress-fill.orange { background: var(--orange); }
+  .progress-fill.yellow { background: var(--yellow); }
+  .progress-fill.green { background: var(--green); }
+  .progress-fill.accent { background: var(--accent); }
+
+  /* Callout blocks - Notion callout style */
+  .finding {
+    padding: 0.6rem 0.75rem; margin-bottom: 0.4rem;
+    border-radius: 4px; display: flex; flex-direction: column; gap: 0.1rem;
+  }
+  .finding.critical { background: var(--red-bg); }
+  .finding.high { background: var(--orange-bg); }
+  .finding.medium { background: var(--yellow-bg); }
+  .finding.low { background: var(--green-bg); }
+  .finding .title { font-weight: 600; font-size: 0.85rem; }
+  .finding.critical .title { color: var(--red); }
+  .finding.high .title { color: var(--orange); }
+  .finding.medium .title { color: var(--yellow); }
+  .finding.low .title { color: var(--green); }
+  .finding .desc { font-size: 0.8rem; color: var(--text-secondary); }
+
+  /* Stat grid */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.5rem; }
+  .stat { text-align: center; padding: 0.7rem 0.5rem; background: var(--bg-secondary); border-radius: 4px; }
+  .stat .num { font-size: 1.4rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+  .stat .lbl { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 500; }
+
+  /* Tech tags */
+  .tech-stack { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .tech-tag {
+    background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-light);
+    padding: 0.2rem 0.55rem; border-radius: 3px; font-size: 0.8rem; font-weight: 400;
+  }
+
+  .footer {
+    text-align: center; padding: 2rem 0 1rem; color: var(--muted);
+    font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 2.5rem;
+  }
+
+  .footnote { font-size: 0.78rem; color: var(--muted); margin-top: 0.4rem; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="header">
+  <div class="icon">&#128062;</div>
+  <h1>FurBaby Social</h1>
+  <p>Application Codebase Analysis</p>
+  <div class="meta">
+    <span>Report Date: 2026-04-03</span>
+    <span>App Version: 0.0.2</span>
+    <span>RN 0.77.2 + Expo 52</span>
+    <span>TypeScript 5.0.4 (strict)</span>
+    <span>~14,360 LOC</span>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Top-level scores -->
+<div class="scores">
+  <div class="score-card critical">
+    <div class="label">Testing</div>
+    <div class="value red">0%</div>
+    <div class="sub">Zero test coverage</div>
+  </div>
+  <div class="score-card high">
+    <div class="label">Security</div>
+    <div class="value orange">4/10</div>
+    <div class="sub">1 critical, 3 high findings</div>
+  </div>
+  <div class="score-card high">
+    <div class="label">Accessibility</div>
+    <div class="value orange">0/10</div>
+    <div class="sub">No a11y attributes found</div>
+  </div>
+  <div class="score-card good">
+    <div class="label">Code Quality</div>
+    <div class="value green">7/10</div>
+    <div class="sub">Strong patterns, minor gaps</div>
+  </div>
+  <div class="score-card medium">
+    <div class="label">Scalability</div>
+    <div class="value yellow">6.4/10</div>
+    <div class="sub">Solid base, needs investment</div>
+  </div>
+  <div class="score-card medium">
+    <div class="label">CI/CD</div>
+    <div class="value yellow">5/10</div>
+    <div class="sub">Builds well, validates poorly</div>
+  </div>
+</div>
+
+<!-- Codebase Overview -->
+<h2 class="section-title">Codebase Overview</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Codebase Metrics</h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="num">539</div><div class="lbl">Source Files</div></div>
+      <div class="stat"><div class="num">30</div><div class="lbl">Screens</div></div>
+      <div class="stat"><div class="num">53</div><div class="lbl">Shared Components</div></div>
+      <div class="stat"><div class="num">35</div><div class="lbl">State Models</div></div>
+      <div class="stat"><div class="num">148</div><div class="lbl">Dependencies</div></div>
+      <div class="stat"><div class="num">11</div><div class="lbl">Entity Domains</div></div>
+    </div>
+    <h3>Technology Stack</h3>
+    <div class="tech-stack" style="margin-top:0.4rem;">
+      <span class="tech-tag">React Native 0.77</span>
+      <span class="tech-tag">Expo 52</span>
+      <span class="tech-tag">TypeScript 5</span>
+      <span class="tech-tag">Effector</span>
+      <span class="tech-tag">React Navigation 6</span>
+      <span class="tech-tag">Shopify Restyle</span>
+      <span class="tech-tag">React Hook Form</span>
+      <span class="tech-tag">Zod</span>
+      <span class="tech-tag">Axios</span>
+      <span class="tech-tag">Firebase</span>
+      <span class="tech-tag">Centrifuge WS</span>
+      <span class="tech-tag">Reanimated 3</span>
+    </div>
+  </div>
+  <div class="card">
+    <h2>File Distribution by Type</h2>
+    <div class="chart-container">
+      <canvas id="fileDistChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Risk Overview -->
+<h2 class="section-title">Risk Assessment</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Overall Risk Radar</h2>
+    <div class="chart-container">
+      <canvas id="radarChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Security Findings by Severity</h2>
+    <div class="chart-container" style="height:200px;">
+      <canvas id="securityChart"></canvas>
+    </div>
+    <table style="margin-top:0.75rem;">
+      <tr><td><span class="badge critical">Critical</span></td><td>Unencrypted token storage</td></tr>
+      <tr><td><span class="badge high">High</span></td><td>WebSocket over ws:// (no TLS)</td></tr>
+      <tr><td><span class="badge high">High</span></td><td>Prod uses staging S3 bucket</td></tr>
+      <tr><td><span class="badge high">High</span></td><td>Firebase config in source control</td></tr>
+      <tr><td><span class="badge medium">Medium</span></td><td>No certificate pinning</td></tr>
+      <tr><td><span class="badge medium">Medium</span></td><td>No biometric/PIN lock</td></tr>
+      <tr><td><span class="badge medium">Medium</span></td><td>Cleartext traffic (debug)</td></tr>
+      <tr><td><span class="badge medium">Medium</span></td><td>No client rate limiting</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- Code Quality -->
+<h2 class="section-title">Code Quality</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Quality Scores</h2>
+    <div class="progress-row">
+      <div class="progress-label"><span>Architecture</span><span>8/10</span></div>
+      <div class="progress-bar"><div class="progress-fill green" style="width:80%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Type Safety</span><span>6/10</span></div>
+      <div class="progress-bar"><div class="progress-fill yellow" style="width:60%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Code Organization</span><span>7/10</span></div>
+      <div class="progress-bar"><div class="progress-fill green" style="width:70%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Naming Conventions</span><span>7/10</span></div>
+      <div class="progress-bar"><div class="progress-fill green" style="width:70%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Duplication</span><span>6/10</span></div>
+      <div class="progress-bar"><div class="progress-fill yellow" style="width:60%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Dependency Management</span><span>5/10</span></div>
+      <div class="progress-bar"><div class="progress-fill orange" style="width:50%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Documentation</span><span>3/10</span></div>
+      <div class="progress-bar"><div class="progress-fill red" style="width:30%"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>TypeScript Issues</h2>
+    <div class="chart-container" style="height:220px;">
+      <canvas id="tsIssuesChart"></canvas>
+    </div>
+    <h3>Complex Components (&gt;400 LOC)</h3>
+    <table>
+      <thead><tr><th>Component</th><th>Lines</th><th>Concern</th></tr></thead>
+      <tbody>
+        <tr><td>ChatFbProvider.tsx</td><td>557</td><td><span class="badge high">20 Firebase ops in one context</span></td></tr>
+        <tr><td>mention/utils.tsx</td><td>516</td><td><span class="badge medium">Dense regex/parsing logic</span></td></tr>
+        <tr><td>ChatDetail.tsx</td><td>444</td><td><span class="badge medium">Could extract subcomponents</span></td></tr>
+      </tbody>
+    </table>
+    <p class="footnote">Most screens (250-300 LOC) are normal for RN with forms, hooks, and styles</p>
+  </div>
+</div>
+
+<!-- Testing -->
+<h2 class="section-title">Testing Strategy</h2>
+<div class="grid-3">
+  <div class="card">
+    <h2>Current Coverage</h2>
+    <div class="chart-container" style="height:200px;">
+      <canvas id="coverageGauge"></canvas>
+    </div>
+    <div style="text-align:center;margin-top:0.5rem;">
+      <p style="font-size:0.88rem;color:var(--red);font-weight:600;">ZERO TESTS EXIST</p>
+      <p class="footnote">Jest configured but no test files found</p>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Untested Critical Paths</h2>
+    <div class="finding critical">
+      <div class="title">Authentication Flow</div>
+      <div class="desc">Login &rarr; OTP &rarr; Token storage &rarr; Refresh &rarr; Logout</div>
+    </div>
+    <div class="finding critical">
+      <div class="title">API Token Refresh</div>
+      <div class="desc">401 interception, silent refresh, retry mechanism</div>
+    </div>
+    <div class="finding high">
+      <div class="title">Chat Messaging</div>
+      <div class="desc">Firebase Firestore + Centrifuge real-time sync</div>
+    </div>
+    <div class="finding high">
+      <div class="title">Form Validation</div>
+      <div class="desc">5 Zod schemas, phone/email/profile validation</div>
+    </div>
+    <div class="finding high">
+      <div class="title">Push Notifications</div>
+      <div class="desc">FCM registration, foreground/background handlers</div>
+    </div>
+    <div class="finding medium">
+      <div class="title">35+ Effector Models</div>
+      <div class="desc">State transitions, computed values, side effects</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Recommended Roadmap</h2>
+    <div class="progress-row">
+      <div class="progress-label"><span>Phase 1: Unit Tests</span><span style="color:var(--red)">0/60</span></div>
+      <div class="progress-bar"><div class="progress-fill red" style="width:0%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Phase 2: Component Tests</span><span style="color:var(--red)">0/30</span></div>
+      <div class="progress-bar"><div class="progress-fill red" style="width:0%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Phase 3: Integration</span><span style="color:var(--red)">0/20</span></div>
+      <div class="progress-bar"><div class="progress-fill red" style="width:0%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Phase 4: E2E</span><span style="color:var(--red)">0/10</span></div>
+      <div class="progress-bar"><div class="progress-fill red" style="width:0%"></div></div>
+    </div>
+    <h3>Coverage Targets</h3>
+    <table>
+      <thead><tr><th>Milestone</th><th>Target</th><th>Focus</th></tr></thead>
+      <tbody>
+        <tr><td>Initial</td><td>30%</td><td>Validation, API, session</td></tr>
+        <tr><td>Core</td><td>60%</td><td>Models, shared components</td></tr>
+        <tr><td>Comprehensive</td><td>80%</td><td>Full coverage + E2E</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- CI/CD -->
+<h2 class="section-title">CI/CD & DevOps</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Pipeline Maturity</h2>
+    <div class="chart-container">
+      <canvas id="cicdChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Pipeline Configuration</h2>
+    <table>
+      <thead><tr><th>Pipeline</th><th>System</th><th>Trigger</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Android Dev</td><td>Drone CI</td><td>build/* branch</td><td><span class="badge low">Active</span></td></tr>
+        <tr><td>Android Stage</td><td>&mdash;</td><td>&mdash;</td><td><span class="badge none">Missing</span></td></tr>
+        <tr><td>Android Prod</td><td>&mdash;</td><td>&mdash;</td><td><span class="badge none">Missing</span></td></tr>
+        <tr><td>iOS Dev</td><td>Codemagic</td><td>dev branch</td><td><span class="badge low">Active</span></td></tr>
+        <tr><td>iOS Stage</td><td>Codemagic</td><td>stage branch</td><td><span class="badge low">Active</span></td></tr>
+        <tr><td>iOS Prod</td><td>Codemagic</td><td>main branch</td><td><span class="badge low">Active</span></td></tr>
+      </tbody>
+    </table>
+    <h3>Missing CI Steps</h3>
+    <div class="finding critical">
+      <div class="title">No test execution</div>
+      <div class="desc">Neither pipeline runs tests before deploy</div>
+    </div>
+    <div class="finding high">
+      <div class="title">No static analysis</div>
+      <div class="desc">ESLint/TypeScript not checked in CI</div>
+    </div>
+    <div class="finding medium">
+      <div class="title">No vulnerability scanning</div>
+      <div class="desc">npm audit not run in any pipeline</div>
+    </div>
+    <div class="finding medium">
+      <div class="title">No bundle size tracking</div>
+      <div class="desc">No guard against bundle bloat</div>
+    </div>
+  </div>
+</div>
+
+<!-- Scalability -->
+<h2 class="section-title">Scalability & Architecture</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Scalability Dimensions</h2>
+    <div class="chart-container">
+      <canvas id="scaleChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Architecture Components</h2>
+    <div class="chart-container tall">
+      <canvas id="archChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Accessibility -->
+<h2 class="section-title">Accessibility & i18n</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Accessibility Checklist</h2>
+    <table>
+      <thead><tr><th>Check</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>accessibilityLabel on interactive elements</td><td><span class="badge critical">Missing</span></td></tr>
+        <tr><td>accessibilityRole attributes</td><td><span class="badge critical">Missing</span></td></tr>
+        <tr><td>accessibilityHint on non-obvious actions</td><td><span class="badge critical">Missing</span></td></tr>
+        <tr><td>Minimum 48x48dp touch targets</td><td><span class="badge none">Unverified</span></td></tr>
+        <tr><td>WCAG AA color contrast</td><td><span class="badge none">Unverified</span></td></tr>
+        <tr><td>Screen reader testing (VoiceOver/TalkBack)</td><td><span class="badge critical">Not done</span></td></tr>
+        <tr><td>Focus management on navigation</td><td><span class="badge critical">Missing</span></td></tr>
+        <tr><td>Heading hierarchy</td><td><span class="badge critical">Missing</span></td></tr>
+        <tr><td>Live regions for dynamic content</td><td><span class="badge critical">Missing</span></td></tr>
+        <tr><td>testID for automation</td><td><span class="badge critical">Missing</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Internationalization Status</h2>
+    <table>
+      <thead><tr><th>Feature</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>i18n framework (i18next)</td><td><span class="badge low">Installed</span></td></tr>
+        <tr><td>Locale detection (expo-localization)</td><td><span class="badge low">Active</span></td></tr>
+        <tr><td>Date formatting (dayjs)</td><td><span class="badge medium">Hardcoded format</span></td></tr>
+        <tr><td>Phone validation (libphonenumber-js)</td><td><span class="badge medium">AU default</span></td></tr>
+        <tr><td>RTL layout support</td><td><span class="badge none">Declared, untested</span></td></tr>
+        <tr><td>Translation file completeness</td><td><span class="badge none">Unaudited</span></td></tr>
+        <tr><td>Pluralization rules</td><td><span class="badge none">Unverified</span></td></tr>
+      </tbody>
+    </table>
+    <h3 style="margin-top:1.25rem;">Error Handling Quality</h3>
+    <div class="chart-container" style="height:200px;">
+      <canvas id="errorChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Recommendations -->
+<h2 class="section-title">Priority Recommendations</h2>
+<div class="card" style="margin-bottom:1.5rem;">
+  <table>
+    <thead><tr><th>#</th><th>Recommendation</th><th>Priority</th><th>Impact</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Implement testing strategy (unit + integration + E2E)</td><td><span class="badge critical">Critical</span></td><td>Quality assurance for all deployments</td></tr>
+      <tr><td>2</td><td>Migrate token storage to react-native-keychain</td><td><span class="badge critical">Critical</span></td><td>Prevents credential theft on compromised devices</td></tr>
+      <tr><td>3</td><td>Upgrade WebSocket to wss:// (TLS)</td><td><span class="badge high">High</span></td><td>Protects real-time data in transit</td></tr>
+      <tr><td>4</td><td>Fix production S3 bucket configuration</td><td><span class="badge high">High</span></td><td>Prevents data loss from staging cleanup</td></tr>
+      <tr><td>5</td><td>Add accessibility attributes to all components</td><td><span class="badge high">High</span></td><td>Legal compliance + user inclusivity</td></tr>
+      <tr><td>6</td><td>Add test execution to CI pipelines</td><td><span class="badge high">High</span></td><td>Quality gate before every deployment</td></tr>
+      <tr><td>7</td><td>Refactor ChatFbProvider (557 LOC)</td><td><span class="badge medium">Medium</span></td><td>Maintainability + testability</td></tr>
+      <tr><td>8</td><td>Eliminate 24 `any` type usages</td><td><span class="badge medium">Medium</span></td><td>Catch type errors at compile time</td></tr>
+      <tr><td>9</td><td>Add Android stage/prod CI builds</td><td><span class="badge medium">Medium</span></td><td>Consistent deployment for all platforms</td></tr>
+      <tr><td>10</td><td>Implement offline support / request queue</td><td><span class="badge medium">Medium</span></td><td>Resilient UX on poor connectivity</td></tr>
+      <tr><td>11</td><td>Add bundle size analysis and tracking</td><td><span class="badge low">Low</span></td><td>Prevent performance regression</td></tr>
+      <tr><td>12</td><td>Implement lazy loading / code splitting</td><td><span class="badge low">Low</span></td><td>Faster app startup time</td></tr>
+      <tr><td>13</td><td>Unify version management (single source)</td><td><span class="badge low">Low</span></td><td>Removes confusion, enables automation</td></tr>
+      <tr><td>14</td><td>Set up Dependabot / Renovate</td><td><span class="badge low">Low</span></td><td>Automated dependency updates</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+
+<div class="footer">
+  FurBaby Social &mdash; Application Codebase Analysis &mdash; Generated 2026-04-03 &mdash; Confidential
+</div>
+
+<script>
+const notionColors = {
+  text: '#37352f',
+  muted: '#9b9a97',
+  border: '#e3e2de',
+  green: '#0f7b6c',
+  yellow: '#cb912f',
+  orange: '#d9730d',
+  red: '#e03e3e',
+  blue: '#2eaadc',
+  purple: '#6940a5',
+  pink: '#ad1a72',
+  brown: '#64473a',
+};
+
+Chart.defaults.color = notionColors.muted;
+Chart.defaults.borderColor = notionColors.border;
+Chart.defaults.font.family = "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+
+// File Distribution Doughnut
+new Chart(document.getElementById('fileDistChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Screens (30)', 'Shared Components (53)', 'State Models (35)', 'Entity UI (40+)', 'Services/Utils (30+)', 'Config/Types (50+)'],
+    datasets: [{
+      data: [30, 53, 35, 40, 30, 50],
+      backgroundColor: [notionColors.blue, notionColors.purple, notionColors.green, notionColors.orange, notionColors.yellow, notionColors.pink],
+      borderWidth: 2,
+      borderColor: '#ffffff',
+      hoverOffset: 6
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 10, font: { size: 11 }, color: notionColors.text } } }
+  }
+});
+
+// Risk Radar
+new Chart(document.getElementById('radarChart'), {
+  type: 'radar',
+  data: {
+    labels: ['Testing', 'Security', 'Accessibility', 'Code Quality', 'Scalability', 'CI/CD', 'Documentation'],
+    datasets: [{
+      label: 'Current State',
+      data: [0, 4, 0, 7, 6.4, 5, 3],
+      backgroundColor: 'rgba(224,62,62,0.08)',
+      borderColor: notionColors.red,
+      pointBackgroundColor: notionColors.red,
+      borderWidth: 2
+    }, {
+      label: 'Target',
+      data: [8, 8, 8, 8, 8, 8, 7],
+      backgroundColor: 'rgba(15,123,108,0.06)',
+      borderColor: notionColors.green,
+      pointBackgroundColor: notionColors.green,
+      borderWidth: 1.5,
+      borderDash: [5, 5]
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: { r: { min: 0, max: 10, ticks: { stepSize: 2, display: false }, grid: { color: notionColors.border }, angleLines: { color: notionColors.border }, pointLabels: { font: { size: 11 }, color: notionColors.text } } },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 15, color: notionColors.text } } }
+  }
+});
+
+// Security findings
+new Chart(document.getElementById('securityChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+    datasets: [{
+      data: [1, 3, 4, 3, 2],
+      backgroundColor: [notionColors.red, notionColors.orange, notionColors.yellow, notionColors.green, notionColors.blue],
+      borderRadius: 3,
+      barThickness: 28
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { grid: { display: false }, ticks: { stepSize: 1, color: notionColors.muted } }, y: { grid: { display: false }, ticks: { color: notionColors.text } } }
+  }
+});
+
+// TypeScript issues
+new Chart(document.getElementById('tsIssuesChart'), {
+  type: 'bar',
+  data: {
+    labels: ['any usage', '@ts-ignore', 'eslint-disable', 'TODO/FIXME'],
+    datasets: [{
+      label: 'Instances',
+      data: [24, 11, 11, 11],
+      backgroundColor: [notionColors.orange, notionColors.yellow, notionColors.yellow, notionColors.muted],
+      borderRadius: 3,
+      barThickness: 24
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { y: { grid: { color: notionColors.border }, beginAtZero: true, ticks: { color: notionColors.muted } }, x: { grid: { display: false }, ticks: { color: notionColors.text } } }
+  }
+});
+
+// Coverage gauge
+new Chart(document.getElementById('coverageGauge'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Covered', 'Uncovered'],
+    datasets: [{
+      data: [0, 100],
+      backgroundColor: [notionColors.green, '#efefed'],
+      borderWidth: 0,
+      circumference: 270,
+      rotation: 225
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '78%',
+    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+  },
+  plugins: [{
+    id: 'gaugeText',
+    afterDraw(chart) {
+      const { ctx, width, height } = chart;
+      ctx.save();
+      ctx.font = "bold 34px ui-sans-serif, -apple-system, sans-serif";
+      ctx.fillStyle = notionColors.red;
+      ctx.textAlign = 'center';
+      ctx.fillText('0%', width / 2, height / 2 + 10);
+      ctx.font = "13px ui-sans-serif, -apple-system, sans-serif";
+      ctx.fillStyle = notionColors.muted;
+      ctx.fillText('test coverage', width / 2, height / 2 + 30);
+      ctx.restore();
+    }
+  }]
+});
+
+// CI/CD maturity
+new Chart(document.getElementById('cicdChart'), {
+  type: 'radar',
+  data: {
+    labels: ['Build Automation', 'Test Automation', 'Deploy Automation', 'Quality Gates', 'Monitoring', 'Security Scanning'],
+    datasets: [{
+      label: 'Current',
+      data: [4, 1, 4, 2, 3, 1],
+      backgroundColor: 'rgba(217,115,13,0.08)',
+      borderColor: notionColors.orange,
+      pointBackgroundColor: notionColors.orange,
+      borderWidth: 2
+    }, {
+      label: 'Target',
+      data: [5, 5, 5, 5, 4, 4],
+      backgroundColor: 'rgba(15,123,108,0.06)',
+      borderColor: notionColors.green,
+      pointBackgroundColor: notionColors.green,
+      borderWidth: 1.5,
+      borderDash: [5, 5]
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: { r: { min: 0, max: 5, ticks: { stepSize: 1, display: false }, grid: { color: notionColors.border }, angleLines: { color: notionColors.border }, pointLabels: { font: { size: 11 }, color: notionColors.text } } },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, color: notionColors.text } } }
+  }
+});
+
+// Scalability chart
+new Chart(document.getElementById('scaleChart'), {
+  type: 'bar',
+  data: {
+    labels: ['State Mgmt', 'Network Resilience', 'Rendering Perf', 'Data Architecture', 'Build Optimization', 'Feature Extensibility'],
+    datasets: [{
+      label: 'Score (out of 5)',
+      data: [4, 2, 3, 3, 3, 4],
+      backgroundColor: [notionColors.green, notionColors.red, notionColors.yellow, notionColors.yellow, notionColors.yellow, notionColors.green],
+      borderRadius: 3,
+      barThickness: 22
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { min: 0, max: 5, grid: { color: notionColors.border }, ticks: { stepSize: 1, color: notionColors.muted } }, y: { grid: { display: false }, ticks: { color: notionColors.text } } }
+  }
+});
+
+// Architecture composition
+new Chart(document.getElementById('archChart'), {
+  type: 'bar',
+  data: {
+    labels: ['user', 'pet', 'post', 'chat', 'auth', 'session', 'comment', 'notification', 'service', 'mention', 'app'],
+    datasets: [
+      { label: 'Models', data: [8,3,5,2,2,1,1,2,1,0,2], backgroundColor: notionColors.blue, borderRadius: 3 },
+      { label: 'UI Components', data: [4,3,4,3,0,0,1,2,1,2,0], backgroundColor: notionColors.purple, borderRadius: 3 },
+      { label: 'API Endpoints', data: [12,5,8,0,4,0,3,2,2,0,0], backgroundColor: notionColors.green, borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, color: notionColors.text } } },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { color: notionColors.text } },
+      y: { stacked: true, grid: { color: notionColors.border }, beginAtZero: true, ticks: { color: notionColors.muted } }
+    }
+  }
+});
+
+// Error handling chart
+new Chart(document.getElementById('errorChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Toast notifications', 'Silent catch (no-op)', 'Logged errors', 'Proper error state'],
+    datasets: [{
+      data: [35, 25, 10, 30],
+      backgroundColor: [notionColors.green, notionColors.red, notionColors.yellow, notionColors.blue],
+      borderWidth: 2,
+      borderColor: '#ffffff',
+      hoverOffset: 5
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, padding: 8, font: { size: 11 }, color: notionColors.text } } }
+  }
+});
+</script>
+
+</body>
+</html>
