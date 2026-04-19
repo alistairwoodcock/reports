@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FurBaby Social Backend - Codebase Analysis</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f7f6f3;
+    --card: #ffffff;
+    --border: #e3e2de;
+    --border-light: #efefed;
+    --text: #37352f;
+    --text-secondary: #6b6b6b;
+    --muted: #9b9a97;
+    --accent: #2eaadc;
+    --accent-bg: rgba(46,170,220,0.08);
+    --green: #0f7b6c;
+    --green-bg: rgba(15,123,108,0.08);
+    --yellow: #cb912f;
+    --yellow-bg: rgba(203,145,47,0.08);
+    --orange: #d9730d;
+    --orange-bg: rgba(217,115,13,0.08);
+    --red: #e03e3e;
+    --red-bg: rgba(224,62,62,0.08);
+    --blue: #2eaadc;
+    --blue-bg: rgba(46,170,220,0.08);
+    --purple: #6940a5;
+    --purple-bg: rgba(105,64,165,0.08);
+    --pink: #ad1a72;
+    --gray: #9b9a97;
+    --gray-bg: rgba(155,154,151,0.08);
+    --notion-brown: #64473a;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px var(--border);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 2rem 4rem 4rem; }
+  @media (max-width: 768px) { .page { padding: 1.5rem 1.25rem; } }
+
+  .header { margin-bottom: 2rem; padding-bottom: 0; }
+  .header .icon { font-size: 3rem; margin-bottom: 0.5rem; }
+  .header h1 { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 0.35rem; }
+  .header p { color: var(--text-secondary); font-size: 1rem; margin-bottom: 0.75rem; }
+  .header .meta { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .header .meta span {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--bg-secondary); color: var(--text-secondary);
+    padding: 0.2rem 0.6rem; border-radius: 3px; font-size: 0.8rem;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 1.5rem 0; }
+
+  .scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 2rem; }
+  .score-card {
+    background: var(--card); border-radius: 4px; padding: 1rem 1.1rem;
+    box-shadow: var(--shadow); position: relative; overflow: hidden;
+  }
+  .score-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2.5px; }
+  .score-card.critical::before { background: var(--red); }
+  .score-card.high::before { background: var(--orange); }
+  .score-card.medium::before { background: var(--yellow); }
+  .score-card.good::before { background: var(--green); }
+  .score-card .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; margin-bottom: 0.3rem; }
+  .score-card .value { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; }
+  .score-card .value.red { color: var(--red); }
+  .score-card .value.orange { color: var(--orange); }
+  .score-card .value.yellow { color: var(--yellow); }
+  .score-card .value.green { color: var(--green); }
+  .score-card .sub { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card); border-radius: 4px; padding: 1.25rem;
+    box-shadow: var(--shadow);
+  }
+  .card h2 {
+    font-size: 0.95rem; font-weight: 600; margin-bottom: 0.85rem;
+    color: var(--text); display: flex; align-items: center; gap: 0.4rem;
+  }
+  .card h3 { font-size: 0.82rem; font-weight: 600; margin: 0.85rem 0 0.4rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .chart-container { position: relative; height: 280px; }
+  .chart-container.tall { height: 350px; }
+
+  .section-title {
+    font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em;
+    margin: 2.5rem 0 1rem; padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th {
+    text-align: left; padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--border); color: var(--muted);
+    font-weight: 500; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border-light); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg-secondary); }
+
+  .badge {
+    display: inline-block; padding: 0.1rem 0.5rem; border-radius: 3px;
+    font-size: 0.73rem; font-weight: 500; letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .badge.critical { background: var(--red-bg); color: var(--red); }
+  .badge.high { background: var(--orange-bg); color: var(--orange); }
+  .badge.medium { background: var(--yellow-bg); color: var(--yellow); }
+  .badge.low { background: var(--green-bg); color: var(--green); }
+  .badge.info { background: var(--blue-bg); color: var(--blue); }
+  .badge.none { background: var(--gray-bg); color: var(--gray); }
+
+  .progress-row { margin-bottom: 0.65rem; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 0.84rem; margin-bottom: 0.25rem; color: var(--text); }
+  .progress-label span:last-child { color: var(--text-secondary); font-weight: 500; }
+  .progress-bar { height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; }
+  .progress-fill.red { background: var(--red); }
+  .progress-fill.orange { background: var(--orange); }
+  .progress-fill.yellow { background: var(--yellow); }
+  .progress-fill.green { background: var(--green); }
+  .progress-fill.accent { background: var(--accent); }
+
+  .finding {
+    padding: 0.6rem 0.75rem; margin-bottom: 0.4rem;
+    border-radius: 4px; display: flex; flex-direction: column; gap: 0.1rem;
+  }
+  .finding.critical { background: var(--red-bg); }
+  .finding.high { background: var(--orange-bg); }
+  .finding.medium { background: var(--yellow-bg); }
+  .finding.low { background: var(--green-bg); }
+  .finding .title { font-weight: 600; font-size: 0.85rem; }
+  .finding.critical .title { color: var(--red); }
+  .finding.high .title { color: var(--orange); }
+  .finding.medium .title { color: var(--yellow); }
+  .finding.low .title { color: var(--green); }
+  .finding .desc { font-size: 0.8rem; color: var(--text-secondary); }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.5rem; }
+  .stat { text-align: center; padding: 0.7rem 0.5rem; background: var(--bg-secondary); border-radius: 4px; }
+  .stat .num { font-size: 1.4rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+  .stat .lbl { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 500; }
+
+  .tech-stack { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .tech-tag {
+    background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-light);
+    padding: 0.2rem 0.55rem; border-radius: 3px; font-size: 0.8rem; font-weight: 400;
+  }
+
+  .footer {
+    text-align: center; padding: 2rem 0 1rem; color: var(--muted);
+    font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 2.5rem;
+  }
+
+  .footnote { font-size: 0.78rem; color: var(--muted); margin-top: 0.4rem; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="header">
+  <div class="icon">&#128190;</div>
+  <h1>FurBaby Social Backend</h1>
+  <p>API Codebase Analysis</p>
+  <div class="meta">
+    <span>Report Date: 2026-04-18</span>
+    <span>App Version: 0.1.0</span>
+    <span>FastAPI on Python 3.12</span>
+    <span>SQLAlchemy 1.x + asyncpg</span>
+    <span>~6,041 LOC</span>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Top-level scores -->
+<div class="scores">
+  <div class="score-card critical">
+    <div class="label">Security</div>
+    <div class="value red">3/10</div>
+    <div class="sub">2 critical, 5 high findings</div>
+  </div>
+  <div class="score-card high">
+    <div class="label">Scalability</div>
+    <div class="value orange">4.8/10</div>
+    <div class="sub">Sync SDKs block event loop</div>
+  </div>
+  <div class="score-card high">
+    <div class="label">Testing</div>
+    <div class="value orange">2/10</div>
+    <div class="sub">~13 tests, no coverage tool</div>
+  </div>
+  <div class="score-card high">
+    <div class="label">Tech Debt</div>
+    <div class="value orange">3/10</div>
+    <div class="sub">Pydantic 1.x + SQLAlchemy 1.x EOL</div>
+  </div>
+  <div class="score-card medium">
+    <div class="label">Code Quality</div>
+    <div class="value yellow">6/10</div>
+    <div class="sub">Structurally sound, mid-refactor</div>
+  </div>
+  <div class="score-card medium">
+    <div class="label">CI/CD</div>
+    <div class="value yellow">5.4/10</div>
+    <div class="sub">Ships reliably, validates poorly</div>
+  </div>
+</div>
+
+<!-- Codebase Overview -->
+<h2 class="section-title">Codebase Overview</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Codebase Metrics</h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="num">102</div><div class="lbl">Python Files</div></div>
+      <div class="stat"><div class="num">6,041</div><div class="lbl">App LOC</div></div>
+      <div class="stat"><div class="num">9</div><div class="lbl">API Routers</div></div>
+      <div class="stat"><div class="num">7</div><div class="lbl">Service Modules</div></div>
+      <div class="stat"><div class="num">7</div><div class="lbl">DAO Modules</div></div>
+      <div class="stat"><div class="num">30</div><div class="lbl">Alembic Migrations</div></div>
+    </div>
+    <h3>Technology Stack</h3>
+    <div class="tech-stack" style="margin-top:0.4rem;">
+      <span class="tech-tag">FastAPI 0.104+</span>
+      <span class="tech-tag">Python 3.12</span>
+      <span class="tech-tag">SQLAlchemy 1.x</span>
+      <span class="tech-tag">asyncpg</span>
+      <span class="tech-tag">Alembic</span>
+      <span class="tech-tag">Pydantic 1.x</span>
+      <span class="tech-tag">Gunicorn + Uvicorn</span>
+      <span class="tech-tag">Redis (aiocache)</span>
+      <span class="tech-tag">PostgreSQL</span>
+      <span class="tech-tag">Twilio</span>
+      <span class="tech-tag">Firebase Admin</span>
+      <span class="tech-tag">Centrifugo</span>
+      <span class="tech-tag">AWS S3 (boto3)</span>
+      <span class="tech-tag">SQLAdmin</span>
+      <span class="tech-tag">Elastic APM</span>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Module Size Distribution (LOC)</h2>
+    <div class="chart-container">
+      <canvas id="fileDistChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Risk Overview -->
+<h2 class="section-title">Risk Assessment</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Overall Risk Radar</h2>
+    <div class="chart-container">
+      <canvas id="radarChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Security Findings by Severity</h2>
+    <div class="chart-container" style="height:200px;">
+      <canvas id="securityChart"></canvas>
+    </div>
+    <table style="margin-top:0.75rem;">
+      <tr><td><span class="badge critical">Critical</span></td><td>Production DB reachable from the public internet (verified)</td></tr>
+      <tr><td><span class="badge critical">Critical</span></td><td>No rate limiting on OTP / login</td></tr>
+      <tr><td><span class="badge high">High</span></td><td>Wildcard CORS (admin-panel browser exposure)</td></tr>
+      <tr><td><span class="badge high">High</span></td><td>Unauthenticated photo upload endpoint</td></tr>
+      <tr><td><span class="badge high">High</span></td><td>Long-lived tokens, no revocation</td></tr>
+      <tr><td><span class="badge high">High</span></td><td>Plaintext OTP + hard-coded <code>1111</code> backdoor</td></tr>
+      <tr><td><span class="badge high">High</span></td><td>Device hijack via <code>POST /me/device</code> (IDOR on FCM token)</td></tr>
+      <tr><td><span class="badge medium">Medium</span></td><td>JWT default + no startup validation (shared w/ session &amp; admin)</td></tr>
+      <tr><td><span class="badge medium">Medium</span></td><td>Weak image validation (upload DoS + mobile decoder exposure)</td></tr>
+      <tr><td><span class="badge medium">Medium</span></td><td>No format allow-list + client-controlled extension on S3 (latent XSS)</td></tr>
+      <tr><td><span class="badge medium">Medium</span></td><td>Sync SMS/SMTP leak timing oracle</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- Code Quality -->
+<h2 class="section-title">Code Quality</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Quality Scores</h2>
+    <div class="progress-row">
+      <div class="progress-label"><span>Architecture</span><span>7/10</span></div>
+      <div class="progress-bar"><div class="progress-fill green" style="width:70%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Type Safety</span><span>6/10</span></div>
+      <div class="progress-bar"><div class="progress-fill yellow" style="width:60%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Code Organization</span><span>6/10</span></div>
+      <div class="progress-bar"><div class="progress-fill yellow" style="width:60%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Naming Conventions</span><span>8/10</span></div>
+      <div class="progress-bar"><div class="progress-fill green" style="width:80%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Duplication</span><span>6/10</span></div>
+      <div class="progress-bar"><div class="progress-fill yellow" style="width:60%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Dependency Management</span><span>3/10</span></div>
+      <div class="progress-bar"><div class="progress-fill red" style="width:30%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Error Handling</span><span>7/10</span></div>
+      <div class="progress-bar"><div class="progress-fill green" style="width:70%"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label"><span>Documentation</span><span>4/10</span></div>
+      <div class="progress-bar"><div class="progress-fill orange" style="width:40%"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Dependency Health</h2>
+    <div class="chart-container" style="height:220px;">
+      <canvas id="depChart"></canvas>
+    </div>
+    <h3>Largest Modules (LOC)</h3>
+    <table>
+      <thead><tr><th>Module</th><th>Lines</th><th>Concern</th></tr></thead>
+      <tbody>
+        <tr><td>services/posts.py</td><td>668</td><td><span class="badge high">Post + comment + Firebase + WS</span></td></tr>
+        <tr><td>services/users.py</td><td>421</td><td><span class="badge medium">Auth + OTP + tokens + cache</span></td></tr>
+        <tr><td>api/users.py</td><td>398</td><td><span class="badge medium">19 endpoints, dense token block</span></td></tr>
+        <tr><td>services/friendship.py</td><td>253</td><td><span class="badge medium">Mixes DAO with direct queries</span></td></tr>
+      </tbody>
+    </table>
+    <p class="footnote">README notes TODO "Move services to DAO" &mdash; partial refactor in flight</p>
+  </div>
+</div>
+
+<!-- Testing -->
+<h2 class="section-title">Testing Strategy</h2>
+<div class="grid-3">
+  <div class="card">
+    <h2>Current Coverage</h2>
+    <div class="chart-container" style="height:200px;">
+      <canvas id="coverageGauge"></canvas>
+    </div>
+    <div style="text-align:center;margin-top:0.5rem;">
+      <p style="font-size:0.88rem;color:var(--orange);font-weight:600;">~13 ACTIVE TESTS</p>
+      <p class="footnote">pytest configured, no coverage tool, ~469 test LOC total</p>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Untested Critical Paths</h2>
+    <div class="finding critical">
+      <div class="title">Post Feed Composition</div>
+      <div class="desc">16 functions in services/posts.py, only create_post tested</div>
+    </div>
+    <div class="finding critical">
+      <div class="title">Friends Graph</div>
+      <div class="desc">Request, accept, reject, block, unblock &mdash; all untested</div>
+    </div>
+    <div class="finding critical">
+      <div class="title">Notifications</div>
+      <div class="desc">Push and in-app notification triggers uncovered</div>
+    </div>
+    <div class="finding high">
+      <div class="title">Photo Pipeline</div>
+      <div class="desc">S3 upload + Pillow validation not tested (no mocks)</div>
+    </div>
+    <div class="finding high">
+      <div class="title">Token Refresh / Rotation</div>
+      <div class="desc">Only issuance is tested; refresh flow is not</div>
+    </div>
+    <div class="finding high">
+      <div class="title">Centrifugo Token + Publish</div>
+      <div class="desc">WS token issuance uncovered; broken tokens fail silently</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Test Infrastructure</h2>
+    <table>
+      <thead><tr><th>Component</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>pytest + pytest-asyncio</td><td><span class="badge low">Configured</span></td></tr>
+        <tr><td>Test DB (TestDBConfig)</td><td><span class="badge low">Wired up</span></td></tr>
+        <tr><td>Transactional rollback</td><td><span class="badge low">Yes</span></td></tr>
+        <tr><td>Firebase mock</td><td><span class="badge low">Auto-use</span></td></tr>
+        <tr><td>Redis → in-memory cache</td><td><span class="badge low">Auto-use</span></td></tr>
+        <tr><td>Alembic stairway test</td><td><span class="badge low">Present</span></td></tr>
+        <tr><td>Twilio mock</td><td><span class="badge critical">Missing</span></td></tr>
+        <tr><td>S3 / boto3 mock</td><td><span class="badge critical">Missing</span></td></tr>
+        <tr><td>Centrifugo mock</td><td><span class="badge critical">Missing</span></td></tr>
+        <tr><td>Test data factories</td><td><span class="badge high">None</span></td></tr>
+        <tr><td>pytest-cov / thresholds</td><td><span class="badge high">None</span></td></tr>
+        <tr><td>Post CRUD tests</td><td><span class="badge high">Commented out</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- CI/CD -->
+<h2 class="section-title">CI/CD & DevOps</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Pipeline Maturity</h2>
+    <div class="chart-container">
+      <canvas id="cicdChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Pipeline Configuration</h2>
+    <table>
+      <thead><tr><th>Stage</th><th>System</th><th>Trigger</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Secret scan (ggshield)</td><td>Drone CI</td><td>dev/stage/master</td><td><span class="badge low">Active</span></td></tr>
+        <tr><td>Tests (pytest)</td><td>Drone CI</td><td>dev/stage only</td><td><span class="badge medium">No prod run</span></td></tr>
+        <tr><td>Build Dev / Stage / Prod</td><td>ECR plugin</td><td>per branch</td><td><span class="badge low">Active</span></td></tr>
+        <tr><td>Deploy ECS (3 envs)</td><td>kudato/drone-ecs-deploy</td><td>per branch</td><td><span class="badge low">Rolling</span></td></tr>
+        <tr><td>Slack notifications</td><td>Drone CI</td><td>success/failure</td><td><span class="badge low">Active</span></td></tr>
+        <tr><td>Prod approval gate</td><td>&mdash;</td><td>&mdash;</td><td><span class="badge critical">Missing</span></td></tr>
+        <tr><td>Rollback on health fail</td><td>&mdash;</td><td>&mdash;</td><td><span class="badge critical">Missing</span></td></tr>
+      </tbody>
+    </table>
+    <h3>Missing CI Steps</h3>
+    <div class="finding critical">
+      <div class="title">No static analysis</div>
+      <div class="desc">ruff and pyright configured but never run in CI</div>
+    </div>
+    <div class="finding critical">
+      <div class="title">No test coverage tracking</div>
+      <div class="desc">pytest runs without --cov; no gating threshold</div>
+    </div>
+    <div class="finding high">
+      <div class="title">No dependency scanning</div>
+      <div class="desc">No pip-audit / Dependabot / Snyk</div>
+    </div>
+    <div class="finding medium">
+      <div class="title">Migrations race on container boot</div>
+      <div class="desc">alembic upgrade head runs in every ECS task at startup</div>
+    </div>
+  </div>
+</div>
+
+<!-- Scalability -->
+<h2 class="section-title">Scalability &amp; Architecture</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Scalability Dimensions</h2>
+    <div class="chart-container">
+      <canvas id="scaleChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Sync SDKs Blocking the Event Loop</h2>
+    <table>
+      <thead><tr><th>SDK</th><th>Called From</th><th>Impact</th></tr></thead>
+      <tbody>
+        <tr><td>firebase-admin</td><td>login, post, comment, like</td><td><span class="badge critical">Blocks loop</span></td></tr>
+        <tr><td>Twilio SMS</td><td>OTP send (auth path)</td><td><span class="badge critical">Blocks loop</span></td></tr>
+        <tr><td>boto3 (S3)</td><td>photo upload / delete</td><td><span class="badge critical">Blocks loop</span></td></tr>
+        <tr><td>passlib bcrypt</td><td>admin login</td><td><span class="badge medium">CPU-bound</span></td></tr>
+      </tbody>
+    </table>
+    <h3>DB Indexes &mdash; Missing</h3>
+    <table>
+      <thead><tr><th>Table</th><th>Column(s)</th></tr></thead>
+      <tbody>
+        <tr><td>post</td><td>author_id, created_at, (privacy, created_at)</td></tr>
+        <tr><td>friend</td><td>(user_a_id, user_b_id, status)</td></tr>
+        <tr><td>comment</td><td>post_id</td></tr>
+        <tr><td>like</td><td>(post_id, status)</td></tr>
+        <tr><td>notification</td><td>(user_id, created_at)</td></tr>
+      </tbody>
+    </table>
+    <p class="footnote">Only <code>user.phone_number</code> is currently indexed</p>
+  </div>
+</div>
+
+<!-- External Dependencies -->
+<h2 class="section-title">External Dependencies &amp; Caching</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>External Services</h2>
+    <p class="footnote" style="margin-bottom:0.75rem;">The backend depends on eight external services. Some have to be fast for the app to feel fast; others could be decoupled so users never wait on them.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>What it's used for</th>
+          <th>What users notice if it's slow</th>
+          <th>Avoidable?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>PostgreSQL</td>
+          <td>Main database</td>
+          <td>Everything stalls</td>
+          <td><span class="badge none">Inherent</span></td>
+        </tr>
+        <tr>
+          <td>Redis</td>
+          <td>Caches user lookups after login</td>
+          <td>Small slowdown; app still works</td>
+          <td><span class="badge low">Already good</span></td>
+        </tr>
+        <tr>
+          <td>Firebase</td>
+          <td>Login tokens + push notifications</td>
+          <td>Login and posting feel sluggish</td>
+          <td><span class="badge high">Partly — push notifications don't need to block</span></td>
+        </tr>
+        <tr>
+          <td>Twilio</td>
+          <td>Sending OTP codes by SMS</td>
+          <td>Sign-in stalls waiting for SMS delivery</td>
+          <td><span class="badge high">Yes — should be fire-and-forget</span></td>
+        </tr>
+        <tr>
+          <td>AWS S3</td>
+          <td>Storing user-uploaded photos</td>
+          <td>Photo uploads stall; feed still loads</td>
+          <td><span class="badge high">Yes — phone could upload directly with a short-lived link</span></td>
+        </tr>
+        <tr>
+          <td>Centrifugo</td>
+          <td>Real-time updates to the feed</td>
+          <td>Creating a post stalls on broadcast</td>
+          <td><span class="badge high">Yes — broadcast should be fire-and-forget</span></td>
+        </tr>
+        <tr>
+          <td>SMTP (email)</td>
+          <td>Admin emails only</td>
+          <td>Admin workflows delayed; users unaffected</td>
+          <td><span class="badge medium">Yes, but low priority</span></td>
+        </tr>
+        <tr>
+          <td>Elastic APM</td>
+          <td>Performance monitoring</td>
+          <td>No effect on users</td>
+          <td><span class="badge low">Already background</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="footnote" style="margin-top:0.75rem;"><strong>Take-away:</strong> the biggest wins are Twilio (sign-ins shouldn't wait for SMS delivery), S3 (photo uploads shouldn't travel through the backend), and Centrifugo (broadcasting a new post shouldn't block the caller). Fixing these makes sign-in, posting, and photo-upload feel instant even when those services are slow.</p>
+  </div>
+  <div class="card">
+    <h2>Cache Coverage</h2>
+    <table>
+      <thead><tr><th>Entity</th><th>TTL</th><th>Invalidation</th></tr></thead>
+      <tbody>
+        <tr><td>UserCache</td><td>3500 s (~1 h)</td><td><span class="badge medium">Phone change only</span></td></tr>
+        <tr><td>PetCategoryCache</td><td>6 h</td><td><span class="badge low">Static reference</span></td></tr>
+        <tr><td>PetBreedCache</td><td>6 h</td><td><span class="badge low">Static reference</span></td></tr>
+        <tr><td>Posts / feed</td><td>&mdash;</td><td><span class="badge critical">Not cached</span></td></tr>
+        <tr><td>Comments / likes</td><td>&mdash;</td><td><span class="badge critical">Not cached</span></td></tr>
+        <tr><td>Friend lists</td><td>&mdash;</td><td><span class="badge critical">Not cached</span></td></tr>
+        <tr><td>Notifications</td><td>&mdash;</td><td><span class="badge critical">Not cached</span></td></tr>
+      </tbody>
+    </table>
+    <h3 style="margin-top:1rem;">Runtime Safeguards</h3>
+    <div class="finding high">
+      <div class="title">Redis falls back to per-worker memory</div>
+      <div class="desc">main.py uses SimpleMemoryCache if Redis is down &mdash; breaks cache coherence across gunicorn workers</div>
+    </div>
+    <div class="finding high">
+      <div class="title">Healthcheck is static 200</div>
+      <div class="desc">Does not verify DB, Redis, Firebase, or Centrifugo &mdash; tasks can pass ECS health while broken</div>
+    </div>
+    <div class="finding medium">
+      <div class="title">No background task runner</div>
+      <div class="desc">No Celery/ARQ &mdash; push, SMS, S3 cleanup all run in the request path</div>
+    </div>
+  </div>
+</div>
+
+<!-- Recommendations -->
+<h2 class="section-title">Priority Recommendations</h2>
+<div class="card" style="margin-bottom:1.5rem;">
+  <table>
+    <thead><tr><th>#</th><th>Recommendation</th><th>Priority</th><th>Impact</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Make the production RDS private: <code>PubliclyAccessible=false</code>, tighten SG to app-tier + bastion/SSM only, move to a private subnet</td><td><span class="badge critical">Critical</span></td><td>Removes the most dangerous blast-radius multiplier &mdash; today any leaked DB password is full-prod compromise</td></tr>
+      <tr><td>2</td><td>Wire slowapi onto OTP send / verify / login</td><td><span class="badge critical">Critical</span></td><td>Blocks SMS-bomb + OTP brute force via regenerate-bypass</td></tr>
+      <tr><td>3</td><td>Remove the <code>"1111"</code> OTP backdoor; gate test-OTP behind an env flag forced-off in stage/prod; hash OTPs; purge 22 hard-coded test numbers from source and git</td><td><span class="badge high">High</span></td><td>Closes a live prod auth-bypass for staff/client accounts; removes PII from repo</td></tr>
+      <tr><td>4</td><td>Move Twilio SMS and Centrifugo broadcast off the request path (background tasks); switch photo upload to presigned-PUT so S3 bytes never traverse the worker</td><td><span class="badge high">High</span></td><td>Unblocks the event loop; closes the Twilio timing oracle; makes sign-in, posting, and upload feel instant</td></tr>
+      <tr><td>5</td><td>Security cleanup bundle: add auth to both photo-upload endpoints; harden <code>POST /me/device</code> against hijack; derive S3 extensions from <code>img.format</code>; set explicit Content-Type on S3 uploads; re-encode accepted images; normalize photo-delete responses</td><td><span class="badge high">High</span></td><td>Closes the three concrete IDORs, the anonymous upload twins, and the latent CDN XSS path</td></tr>
+      <tr><td>6</td><td>Add missing DB indexes on <code>post(type, created_at)</code>, <code>post.author_id</code>, <code>friendship.user_b_id</code>, <code>comment.post_id</code>, <code>like.voter_id</code>, <code>notification(user_id, created_at)</code>, plus drop the 13 redundant <code>uq_*_id</code> duplicates</td><td><span class="badge high">High</span></td><td>Do this while tables are empty &mdash; it's a free migration today</td></tr>
+      <tr><td>7</td><td>Stop over-fetching in feed queries: use existing <code>.expression</code> forms of <code>comments_count</code> / <code>likes_count</code> as subqueries; drop <code>lazy="selectin"</code> on collections used only for counts</td><td><span class="badge high">High</span></td><td>Removes 25k-row transfers per 10-post feed page</td></tr>
+      <tr><td>8</td><td>Shorten access token lifetime; add <code>jti</code> + Redis blacklist + refresh rotation; add logout endpoints</td><td><span class="badge high">High</span></td><td>Bounded damage from any token leak</td></tr>
+      <tr><td>9</td><td>Scope CORS to SQLAdmin browser origin (no effect on mobile)</td><td><span class="badge high">High</span></td><td>Shrinks admin-panel cross-origin attack surface</td></tr>
+      <tr><td>10</td><td>Plan Pydantic 2.x + SQLAlchemy 2.x migration</td><td><span class="badge high">High</span></td><td>Pydantic 1.x is EOL</td></tr>
+      <tr><td>11</td><td>Add ruff check, pyright, and --cov to .drone.yml</td><td><span class="badge medium">Medium</span></td><td>Real quality gate in CI</td></tr>
+      <tr><td>12</td><td>Remove JWT default + add startup validator; split JWT / session / admin secrets</td><td><span class="badge medium">Medium</span></td><td>Closes a latent silent-fallback footgun in new environments</td></tr>
+      <tr><td>13</td><td>Gate prod deploy behind a promote event</td><td><span class="badge medium">Medium</span></td><td>Stops accidental master pushes from rolling</td></tr>
+      <tr><td>14</td><td>Deep health check + ECS rollback-on-fail</td><td><span class="badge medium">Medium</span></td><td>Broken Redis/DB no longer ships green</td></tr>
+      <tr><td>15</td><td>Adopt keyset pagination on posts / notifications</td><td><span class="badge medium">Medium</span></td><td>Deep pagination stops scaling linearly</td></tr>
+      <tr><td>16</td><td>Uncomment post CRUD tests and add factories + mocks</td><td><span class="badge medium">Medium</span></td><td>Regression safety on the most-used domain</td></tr>
+      <tr><td>17</td><td>Add pip-audit or Dependabot</td><td><span class="badge low">Low</span></td><td>Automated vulnerability surfacing</td></tr>
+      <tr><td>18</td><td>Tag images with git SHA, retain last N in ECR</td><td><span class="badge low">Low</span></td><td>Enables fast rollback without rebuild</td></tr>
+      <tr><td>19</td><td>Split services/posts.py (668 LOC) into post / comment / like / publish</td><td><span class="badge low">Low</span></td><td>Code cleanliness &mdash; structural shape is fine otherwise</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-title">Post-Cleanup Roadmap</h2>
+<div class="card" style="margin-bottom:1.5rem;">
+  <p class="footnote" style="margin-bottom:0.75rem;">These are <strong>not</strong> current bugs &mdash; they're the operational-maturity items to plan for after the audit findings are remediated. See <code>08-post-cleanup-roadmap.md</code> for detail.</p>
+  <table>
+    <thead><tr><th>#</th><th>Area</th><th>Why now</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Stand up stage environment + promotion flow (image-digest promotion from stage to prod)</td><td>Unblocks safe testing for every subsequent change</td></tr>
+      <tr><td>2</td><td>Min 2 ECS tasks + deeper health check + ALB connection draining on deploy</td><td>Availability &mdash; today every deploy or crash is a full outage</td></tr>
+      <tr><td>3</td><td>Alerting + SLOs + PagerDuty wiring on top of existing Elastic APM</td><td>You can't fix what you don't know is broken</td></tr>
+      <tr><td>4</td><td>Verify RDS point-in-time recovery + actually test a restore into a scratch environment</td><td>"Have backups" becomes "can recover" only after a tested restore</td></tr>
+      <tr><td>5</td><td>AWS WAF in front of the API + enable Secrets Manager rotation</td><td>Cheap security hardening once the audit basics are closed</td></tr>
+      <tr><td>6</td><td>Feature flags + product analytics pipeline (PostHog / Amplitude / Segment)</td><td>Product tooling that compounds as the team grows</td></tr>
+      <tr><td>7</td><td>RDS Proxy + read replica when load warrants</td><td>Unlocks multi-task horizontal scale without connection exhaustion</td></tr>
+      <tr><td>8</td><td>External penetration test once audit fixes have shipped</td><td>Finds the things you don't know you don't know</td></tr>
+      <tr><td>9</td><td>Purpose-built admin tooling + user data-export endpoints</td><td>Once there's a support team or compliance need</td></tr>
+      <tr><td>10</td><td>Resource tagging, cost alerting, ADR discipline</td><td>Governance habits before AWS bills surprise you</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote" style="margin-top:0.75rem;">Known future scaling ceilings: single-task ECS (availability), small RDS (~5&ndash;10k DAU once indexes land), single Centrifugo (~1&ndash;5k concurrent WS), per-worker Redis fallback (breaks cache coherence at multi-task). None are problems today &mdash; all are predictable once the cleanup is done.</p>
+</div>
+
+</div>
+
+<div class="footer">
+  FurBaby Social Backend &mdash; API Codebase Analysis &mdash; Generated 2026-04-19 &mdash; Confidential
+</div>
+
+<script>
+const notionColors = {
+  text: '#37352f',
+  muted: '#9b9a97',
+  border: '#e3e2de',
+  green: '#0f7b6c',
+  yellow: '#cb912f',
+  orange: '#d9730d',
+  red: '#e03e3e',
+  blue: '#2eaadc',
+  purple: '#6940a5',
+  pink: '#ad1a72',
+  brown: '#64473a',
+};
+
+Chart.defaults.color = notionColors.muted;
+Chart.defaults.borderColor = notionColors.border;
+Chart.defaults.font.family = "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+
+// Module LOC distribution
+new Chart(document.getElementById('fileDistChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['services/ (1,600)', 'api/ (1,229)', 'dao/ (624)', 'db/models/ (527)', 'utils/ (~1,660)', 'schemas/ (~400)'],
+    datasets: [{
+      data: [1600, 1229, 624, 527, 1660, 400],
+      backgroundColor: [notionColors.blue, notionColors.purple, notionColors.green, notionColors.orange, notionColors.yellow, notionColors.pink],
+      borderWidth: 2,
+      borderColor: '#ffffff',
+      hoverOffset: 6
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 10, font: { size: 11 }, color: notionColors.text } } }
+  }
+});
+
+// Risk Radar
+new Chart(document.getElementById('radarChart'), {
+  type: 'radar',
+  data: {
+    labels: ['Security', 'Scalability', 'Testing', 'Tech Debt', 'Code Quality', 'CI/CD', 'Observability'],
+    datasets: [{
+      label: 'Current State',
+      data: [3, 4.8, 2, 3, 6, 5.4, 7],
+      backgroundColor: 'rgba(224,62,62,0.08)',
+      borderColor: notionColors.red,
+      pointBackgroundColor: notionColors.red,
+      borderWidth: 2
+    }, {
+      label: 'Target',
+      data: [9, 8, 7, 8, 8, 8, 8],
+      backgroundColor: 'rgba(15,123,108,0.06)',
+      borderColor: notionColors.green,
+      pointBackgroundColor: notionColors.green,
+      borderWidth: 1.5,
+      borderDash: [5, 5]
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: { r: { min: 0, max: 10, ticks: { stepSize: 2, display: false }, grid: { color: notionColors.border }, angleLines: { color: notionColors.border }, pointLabels: { font: { size: 11 }, color: notionColors.text } } },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 15, color: notionColors.text } } }
+  }
+});
+
+// Security findings
+new Chart(document.getElementById('securityChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+    datasets: [{
+      data: [2, 5, 4, 3, 3],
+      backgroundColor: [notionColors.red, notionColors.orange, notionColors.yellow, notionColors.green, notionColors.blue],
+      borderRadius: 3,
+      barThickness: 28
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { grid: { display: false }, ticks: { stepSize: 1, color: notionColors.muted } }, y: { grid: { display: false }, ticks: { color: notionColors.text } } }
+  }
+});
+
+// Dependency Health chart
+new Chart(document.getElementById('depChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Pydantic 1.x (EOL)', 'SQLAlchemy 1.x (legacy)', 'Python 3.11/3.12 mismatch', 'Two JWT libs'],
+    datasets: [{
+      label: 'Tech-debt weight',
+      data: [10, 8, 3, 2],
+      backgroundColor: [notionColors.red, notionColors.orange, notionColors.yellow, notionColors.muted],
+      borderRadius: 3,
+      barThickness: 24
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { y: { grid: { color: notionColors.border }, beginAtZero: true, ticks: { color: notionColors.muted } }, x: { grid: { display: false }, ticks: { color: notionColors.text, font: { size: 10 } } } }
+  }
+});
+
+// Coverage gauge (approximate)
+new Chart(document.getElementById('coverageGauge'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Estimated Tested', 'Untested'],
+    datasets: [{
+      data: [10, 90],
+      backgroundColor: [notionColors.orange, '#efefed'],
+      borderWidth: 0,
+      circumference: 270,
+      rotation: 225
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '78%',
+    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+  },
+  plugins: [{
+    id: 'gaugeText',
+    afterDraw(chart) {
+      const { ctx, width, height } = chart;
+      ctx.save();
+      ctx.font = "bold 30px ui-sans-serif, -apple-system, sans-serif";
+      ctx.fillStyle = notionColors.orange;
+      ctx.textAlign = 'center';
+      ctx.fillText('~10%', width / 2, height / 2 + 6);
+      ctx.font = "12px ui-sans-serif, -apple-system, sans-serif";
+      ctx.fillStyle = notionColors.muted;
+      ctx.fillText('est. coverage', width / 2, height / 2 + 26);
+      ctx.restore();
+    }
+  }]
+});
+
+// CI/CD maturity
+new Chart(document.getElementById('cicdChart'), {
+  type: 'radar',
+  data: {
+    labels: ['Build Automation', 'Test Automation', 'Deploy Automation', 'Quality Gates', 'Monitoring', 'Security Scanning'],
+    datasets: [{
+      label: 'Current',
+      data: [4, 2, 4, 1, 3, 2],
+      backgroundColor: 'rgba(217,115,13,0.08)',
+      borderColor: notionColors.orange,
+      pointBackgroundColor: notionColors.orange,
+      borderWidth: 2
+    }, {
+      label: 'Target',
+      data: [5, 5, 5, 5, 4, 4],
+      backgroundColor: 'rgba(15,123,108,0.06)',
+      borderColor: notionColors.green,
+      pointBackgroundColor: notionColors.green,
+      borderWidth: 1.5,
+      borderDash: [5, 5]
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: { r: { min: 0, max: 5, ticks: { stepSize: 1, display: false }, grid: { color: notionColors.border }, angleLines: { color: notionColors.border }, pointLabels: { font: { size: 11 }, color: notionColors.text } } },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, color: notionColors.text } } }
+  }
+});
+
+// Scalability chart
+new Chart(document.getElementById('scaleChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Architecture Layering', 'Database', 'Async Correctness', 'Caching', 'Real-time Fanout', 'Background Tasks', 'Deployment', 'Feature Extensibility'],
+    datasets: [{
+      label: 'Score (out of 5)',
+      data: [3, 3, 1, 2, 2, 1, 3, 4],
+      backgroundColor: [
+        notionColors.yellow, notionColors.yellow, notionColors.red, notionColors.red,
+        notionColors.red, notionColors.red, notionColors.yellow, notionColors.green
+      ],
+      borderRadius: 3,
+      barThickness: 20
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { min: 0, max: 5, grid: { color: notionColors.border }, ticks: { stepSize: 1, color: notionColors.muted } }, y: { grid: { display: false }, ticks: { color: notionColors.text, font: { size: 10 } } } }
+  }
+});
+
+</script>
+
+</body>
+</html>
