@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FurBaby Social - Delivery Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f7f6f3;
+    --card: #ffffff;
+    --border: #e3e2de;
+    --border-light: #efefed;
+    --text: #37352f;
+    --text-secondary: #6b6b6b;
+    --muted: #9b9a97;
+    --accent: #2eaadc;
+    --accent-bg: rgba(46,170,220,0.08);
+    --green: #0f7b6c;
+    --green-bg: rgba(15,123,108,0.08);
+    --yellow: #cb912f;
+    --yellow-bg: rgba(203,145,47,0.08);
+    --orange: #d9730d;
+    --orange-bg: rgba(217,115,13,0.08);
+    --red: #e03e3e;
+    --red-bg: rgba(224,62,62,0.08);
+    --blue: #2eaadc;
+    --blue-bg: rgba(46,170,220,0.08);
+    --purple: #6940a5;
+    --purple-bg: rgba(105,64,165,0.08);
+    --pink: #ad1a72;
+    --gray: #9b9a97;
+    --gray-bg: rgba(155,154,151,0.08);
+    --notion-brown: #64473a;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px var(--border);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 2rem 4rem 4rem; }
+  @media (max-width: 768px) { .page { padding: 1.5rem 1.25rem; } }
+
+  .header { margin-bottom: 2rem; padding-bottom: 0; }
+  .header .icon { font-size: 3rem; margin-bottom: 0.5rem; }
+  .header h1 { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 0.35rem; }
+  .header p { color: var(--text-secondary); font-size: 1rem; margin-bottom: 0.75rem; }
+  .header .meta { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .header .meta span {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--bg-secondary); color: var(--text-secondary);
+    padding: 0.2rem 0.6rem; border-radius: 3px; font-size: 0.8rem;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 1.5rem 0; }
+
+  .scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 2rem; }
+  .score-card {
+    background: var(--card); border-radius: 4px; padding: 1rem 1.1rem;
+    box-shadow: var(--shadow); position: relative; overflow: hidden;
+  }
+  .score-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2.5px; }
+  .score-card.critical::before { background: var(--red); }
+  .score-card.high::before { background: var(--orange); }
+  .score-card.medium::before { background: var(--yellow); }
+  .score-card.good::before { background: var(--green); }
+  .score-card .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; margin-bottom: 0.3rem; }
+  .score-card .value { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; }
+  .score-card .value.red { color: var(--red); }
+  .score-card .value.orange { color: var(--orange); }
+  .score-card .value.yellow { color: var(--yellow); }
+  .score-card .value.green { color: var(--green); }
+  .score-card .sub { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card); border-radius: 4px; padding: 1.25rem;
+    box-shadow: var(--shadow);
+  }
+  .card h2 {
+    font-size: 0.95rem; font-weight: 600; margin-bottom: 0.85rem;
+    color: var(--text); display: flex; align-items: center; gap: 0.4rem;
+  }
+  .card h3 { font-size: 0.82rem; font-weight: 600; margin: 0.85rem 0 0.4rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .chart-container { position: relative; height: 280px; }
+  .chart-container.tall { height: 350px; }
+
+  .section-title {
+    font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em;
+    margin: 2.5rem 0 1rem; padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th {
+    text-align: left; padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--border); color: var(--muted);
+    font-weight: 500; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border-light); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg-secondary); }
+
+  .badge {
+    display: inline-block; padding: 0.1rem 0.5rem; border-radius: 3px;
+    font-size: 0.73rem; font-weight: 500; letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .badge.critical { background: var(--red-bg); color: var(--red); }
+  .badge.high { background: var(--orange-bg); color: var(--orange); }
+  .badge.medium { background: var(--yellow-bg); color: var(--yellow); }
+  .badge.low { background: var(--green-bg); color: var(--green); }
+  .badge.info { background: var(--blue-bg); color: var(--blue); }
+  .badge.none { background: var(--gray-bg); color: var(--gray); }
+
+  .progress-row { margin-bottom: 0.65rem; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 0.84rem; margin-bottom: 0.25rem; color: var(--text); }
+  .progress-label span:last-child { color: var(--text-secondary); font-weight: 500; }
+  .progress-bar { height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; }
+  .progress-fill.red { background: var(--red); }
+  .progress-fill.orange { background: var(--orange); }
+  .progress-fill.yellow { background: var(--yellow); }
+  .progress-fill.green { background: var(--green); }
+  .progress-fill.accent { background: var(--accent); }
+
+  .finding {
+    padding: 0.6rem 0.75rem; margin-bottom: 0.4rem;
+    border-radius: 4px; display: flex; flex-direction: column; gap: 0.1rem;
+  }
+  .finding.critical { background: var(--red-bg); }
+  .finding.high { background: var(--orange-bg); }
+  .finding.medium { background: var(--yellow-bg); }
+  .finding.low { background: var(--green-bg); }
+  .finding .title { font-weight: 600; font-size: 0.85rem; }
+  .finding.critical .title { color: var(--red); }
+  .finding.high .title { color: var(--orange); }
+  .finding.medium .title { color: var(--yellow); }
+  .finding.low .title { color: var(--green); }
+  .finding .desc { font-size: 0.8rem; color: var(--text-secondary); }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.5rem; }
+  .stat { text-align: center; padding: 0.7rem 0.5rem; background: var(--bg-secondary); border-radius: 4px; }
+  .stat .num { font-size: 1.4rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+  .stat .lbl { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 500; }
+
+  .tech-stack { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .tech-tag {
+    background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-light);
+    padding: 0.2rem 0.55rem; border-radius: 3px; font-size: 0.8rem; font-weight: 400;
+  }
+
+  .footer {
+    text-align: center; padding: 2rem 0 1rem; color: var(--muted);
+    font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 2.5rem;
+  }
+
+  .footnote { font-size: 0.78rem; color: var(--muted); margin-top: 0.4rem; }
+</style>
+<style>
+  .finding.info { background: var(--blue-bg); }
+  .finding.info .title { color: var(--blue); }
+  .finding.none { background: var(--gray-bg); }
+  .finding.none .title { color: var(--text); }
+  .lede { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1rem; max-width: 75ch; }
+  .card p { font-size: 0.86rem; color: var(--text); margin-bottom: 0.5rem; }
+  td.num { width: 2rem; color: var(--muted); }
+  td.hrs { width: 3.5rem; color: var(--text-secondary); white-space: nowrap; }
+  td.st { width: 7.5rem; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.6rem; }
+  .table-scroll { overflow-x: auto; }
+  .scores { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .header .meta a { color: inherit; }
+  @media (max-width: 640px) {
+    table.checklist thead { display: none; }
+    table.checklist tr { display: block; padding: 0.55rem 0; border-bottom: 1px solid var(--border-light); }
+    table.checklist tr:last-child { border-bottom: none; }
+    table.checklist td { display: block; border: none; padding: 0.15rem 0; width: auto; }
+    table.checklist td:first-child { font-weight: 600; }
+    table.checklist td.hrs { display: none; }
+    .scores { grid-template-columns: 1fr 1fr; }
+    .header h1 { font-size: 2rem; }
+  }
+  .compare td:nth-child(2), .compare td:nth-child(3), .compare th:nth-child(2), .compare th:nth-child(3) { text-align: right; white-space: nowrap; }
+  @media print {
+    .card, .score-card, .finding { break-inside: avoid; }
+    tr:hover td { background: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="header">
+  <div class="icon">&#128062;</div>
+  <h1>FurBaby Social</h1>
+  <p>Delivery Report: Production Readiness Work</p>
+  <div class="meta">
+    <span>Report Date: 2026-10-20</span>
+    <span>Work Period: April &ndash; October 2026</span>
+    <span>Quote: 40 hours, 11 items</span>
+    <span>App 3.3.0</span>
+    <span>Follows the April <a href="../furbabysocial/dashboard.html">app</a> and <a href="../furbabysocial-backend/dashboard.html">backend</a> analyses</span>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<p class="lede">In April we reviewed the FurBaby Social app and backend and quoted 40 hours to get the platform production ready: take control of the code and systems from Appello, fix the scaling and security problems found, fix the known issues, and add automated testing. This report covers what was delivered, what changed along the way, and what's left.</p>
+
+<div class="scores">
+  <div class="score-card good">
+    <div class="label">Quote Items</div>
+    <div class="value green">11/11</div>
+    <div class="sub">8 in full, 3 core scope (see below)</div>
+  </div>
+  <div class="score-card good">
+    <div class="label">Reported Issues</div>
+    <div class="value green">20/20</div>
+    <div class="sub">Fixed; 17 with an automated test</div>
+  </div>
+  <div class="score-card good">
+    <div class="label">Further Fixes</div>
+    <div class="value green">75</div>
+    <div class="sub">User-facing bugs found in testing</div>
+  </div>
+  <div class="score-card good">
+    <div class="label">Backend Tests</div>
+    <div class="value green">306</div>
+    <div class="sub">Up from ~13 in April</div>
+  </div>
+  <div class="score-card good">
+    <div class="label">App Tests</div>
+    <div class="value green">588</div>
+    <div class="sub">Up from 0, plus 37 end-to-end flows</div>
+  </div>
+  <div class="score-card good">
+    <div class="label">Load Test</div>
+    <div class="value green">0 errors</div>
+    <div class="sub">50 users, 3,715 requests</div>
+  </div>
+</div>
+
+<!-- Quote checklist -->
+<h2 class="section-title">Quote Checklist</h2>
+<div class="card">
+  <div class="table-scroll">
+  <table class="checklist">
+    <thead><tr><th>Quote item</th><th>Quoted hours</th><th>Status</th><th>What was delivered</th></tr></thead>
+    <tbody>
+      <tr><td>GitHub setup (inc. pipelines)</td><td class="hrs">2</td><td class="st"><span class="badge low">Delivered</span></td><td>FurBaby Social GitHub organisation holding the app and backend code, with automated checks before every build and deploy.</td></tr>
+      <tr><td>CI/CD setup</td><td class="hrs">6</td><td class="st"><span class="badge low">Delivered</span></td><td>Appello's build systems (Drone, Codemagic) were internal to Appello, so both were replaced. The backend deploys from GitHub to a staging server, then to production on approval. App builds and store uploads run through Expo, using the Apple and Google signing keys recovered from Appello.</td></tr>
+      <tr><td>Appello code dependency replacement</td><td class="hrs">4</td><td class="st"><span class="badge low">Delivered</span></td><td>Replaced Appello's logging library, image-resizing service, server base image, realtime server and Firebase project (Appello's was deleted). The running system and builds no longer depend on anything Appello hosts (one developer-only lint setting remains).</td></tr>
+      <tr><td>Scaling: background tasks</td><td class="hrs">4</td><td class="st"><span class="badge medium">Core delivered</span></td><td>Slow calls to outside services (push notifications, SMS, photo storage) no longer hold up other users' requests. A separate job queue is left for when volume grows.</td></tr>
+      <tr><td>Scaling: upload scaling</td><td class="hrs">3</td><td class="st"><span class="badge medium">Different approach</span></td><td>Photos are resized on the phone before upload, which also fixed failed uploads. Images are served resized through a content delivery network (CDN). Videos (Zoomies) upload straight to storage. Photos still pass through the server, but they're small once resized.</td></tr>
+      <tr><td>Scaling: general items</td><td class="hrs">2</td><td class="st"><span class="badge low">Delivered</span></td><td>Database indexes added for feeds, friends, comments and notifications. Fixed an empty-feed loop that sent ~50 requests a second per user. Load tested.</td></tr>
+      <tr><td>Back end security</td><td class="hrs">3</td><td class="st"><span class="badge medium">Priority items</span></td><td>Database taken off the public internet. A login bypass closed. Photo uploads now require sign-in. Other users' contact details hidden. Some medium and low findings remain.</td></tr>
+      <tr><td>Front end security</td><td class="hrs">3</td><td class="st"><span class="badge low">Delivered</span></td><td>Login tokens stored in the phone's secure keychain. Live updates encrypted. Certificate pinning rebuilt so it can't break on renewal. User data cleared on sign-out.</td></tr>
+      <tr><td>Address known issues</td><td class="hrs">6</td><td class="st"><span class="badge low">Delivered</span></td><td>All 20 issues from the November 2025 list fixed, plus 75 further user-facing fixes found through testing.</td></tr>
+      <tr><td>Back end testing</td><td class="hrs">3</td><td class="st"><span class="badge low">Delivered</span></td><td>306 automated tests run on every change and before every deploy.</td></tr>
+      <tr><td>Front end testing</td><td class="hrs">4</td><td class="st"><span class="badge low">Delivered</span></td><td>588 automated app tests run on every change. 37 end-to-end flows drive the real app in a simulator.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="footnote">Of the launch plan in the April quote, staging was delivered early (see Beyond the Quote). The Go/No-Go launch decision is still to come.</p>
+</div>
+
+<!-- Security -->
+<h2 class="section-title">Security</h2>
+<p class="lede">The April reviews raised about 30 security findings across the app and backend. All critical and high findings have been closed or reduced. The biggest risk, the production database being reachable from the internet, is closed.</p>
+<div class="grid-2">
+  <div class="card">
+    <h2>April Findings: Where They Stand</h2>
+    <div class="chart-container" style="height:300px;">
+      <canvas id="secChart"></canvas>
+    </div>
+    <div class="legend-row">
+      <span><span class="badge low">Fixed</span> resolved</span>
+      <span><span class="badge medium">Reduced</span> main risk closed, follow-up left</span>
+      <span><span class="badge none">Accepted</span> reviewed, not a real risk</span>
+      <span><span class="badge high">Open</span> not yet done</span>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Critical and High Findings</h2>
+    <table>
+      <tbody>
+        <tr><td>Production database reachable from the internet</td><td class="st"><span class="badge low">Fixed</span></td></tr>
+        <tr><td>Login tokens stored unencrypted on the phone</td><td class="st"><span class="badge low">Fixed</span></td></tr>
+        <tr><td>Live updates sent unencrypted</td><td class="st"><span class="badge low">Fixed</span></td></tr>
+        <tr><td>Production app using the staging photo storage</td><td class="st"><span class="badge low">Fixed</span></td></tr>
+        <tr><td>Admin panel open to any website (CORS)</td><td class="st"><span class="badge low">Fixed</span></td></tr>
+        <tr><td>Photo upload without signing in</td><td class="st"><span class="badge low">Fixed</span></td></tr>
+        <tr><td>No limit on login code attempts</td><td class="st"><span class="badge medium">Reduced</span></td></tr>
+        <tr><td>Long-lived login tokens</td><td class="st"><span class="badge medium">Reduced</span></td></tr>
+        <tr><td>Acting on another user's device or photos</td><td class="st"><span class="badge medium">Reduced</span></td></tr>
+        <tr><td>Firebase app config in the code</td><td class="st"><span class="badge none">Accepted</span></td></tr>
+      </tbody>
+    </table>
+    <p class="footnote">&ldquo;Reduced&rdquo; example: login codes are limited to 3 tries per 15 minutes per number, but not yet per network address.</p>
+  </div>
+</div>
+<div class="card" style="margin-bottom:1.25rem;">
+  <h2>Security Work Beyond the Findings</h2>
+  <div class="finding low"><div class="title">Appello's access removed</div><div class="desc">Agency AWS users and keys deleted, the open photo-storage policy removed, the database password changed, and user reports no longer emailed to Appello.</div></div>
+  <div class="finding low"><div class="title">Servers closed to direct access</div><div class="desc">The API servers accepted traffic straight from the internet, bypassing the load balancer. Now load balancer only.</div></div>
+  <div class="finding low"><div class="title">Least-privilege access</div><div class="desc">Production runs with its own limited permissions instead of an agency admin key. Admin access to AWS uses two-factor sign-in.</div></div>
+  <div class="finding low"><div class="title">Privacy</div><div class="desc">Other users' phone, email, birth date and postcode are no longer sent to the app. Personal data is kept out of logs.</div></div>
+  <div class="finding low"><div class="title">Account suspension</div><div class="desc">Suspended users are locked out on every device straight away.</div></div>
+</div>
+
+<!-- Performance -->
+<h2 class="section-title">Performance &amp; Scalability</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Improvements</h2>
+    <div class="finding low"><div class="title">Slow services no longer hold up the app</div><div class="desc">Push notifications, SMS, photo storage and Firebase calls now run off the main request path, so one slow service can't stall everyone.</div></div>
+    <div class="finding low"><div class="title">Database indexes</div><div class="desc">Indexes added for feeds, profiles, friends, comments and notifications; 13 duplicate indexes removed.</div></div>
+    <div class="finding low"><div class="title">Runaway feed requests</div><div class="desc">An empty feed made each phone ask the server about 50 times a second. Fixed.</div></div>
+    <div class="finding low"><div class="title">Faster, smaller images</div><div class="desc">Photos are resized on the phone before upload and served at screen size through an image CDN.</div></div>
+    <div class="finding low"><div class="title">Less server work per request</div><div class="desc">Reusing one storage connection cut about 60% of the server's processing per request under load.</div></div>
+    <div class="finding low"><div class="title">Live updates can't break posting</div><div class="desc">A realtime-server hiccup no longer makes likes, comments or posts fail.</div></div>
+  </div>
+  <div class="card">
+    <h2>Load Test (50 Simulated Users, Staging Server)</h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="num">3,715</div><div class="lbl">Requests</div></div>
+      <div class="stat"><div class="num">0</div><div class="lbl">Failures</div></div>
+      <div class="stat"><div class="num">0.74 s</div><div class="lbl">Median response</div></div>
+      <div class="stat"><div class="num">2&times;</div><div class="lbl">Throughput</div></div>
+    </div>
+    <table class="compare" style="margin-top:0.75rem;">
+      <thead><tr><th>50 users</th><th>First run</th><th>After fix</th></tr></thead>
+      <tbody>
+        <tr><td>Median response</td><td>3.4 s</td><td><strong>0.74 s</strong></td></tr>
+        <tr><td>Slowest response</td><td>24 s</td><td><strong>5 s</strong></td></tr>
+        <tr><td>Failed requests</td><td>26</td><td><strong>0</strong></td></tr>
+        <tr><td>Requests per second</td><td>6.7</td><td><strong>12.4</strong></td></tr>
+      </tbody>
+    </table>
+    <p class="footnote" style="margin-bottom:1rem;">Simulated users log in, scroll feeds, open posts, like, comment, post photos and check notifications at the same time. The first run exposed a slowdown in how photo links were generated. After the fix, the same test passed cleanly on staging, our smallest server.</p>
+    <h3>For Later, As Usage Grows</h3>
+    <table>
+      <tbody>
+        <tr><td>New public posts notify every user one by one</td><td><span class="badge medium">At ~1,000s of users</span></td></tr>
+        <tr><td>Like and comment counts load full lists</td><td><span class="badge medium">Popular posts</span></td></tr>
+        <tr><td>Background job queue for push, SMS and cleanup</td><td><span class="badge medium">Higher volume</span></td></tr>
+        <tr><td>Automatic server scaling</td><td><span class="badge none">Post-launch</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Issues -->
+<h2 class="section-title">Issues Resolved</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Reported Issues (November 2025 List)</h2>
+    <table>
+      <tbody>
+        <tr><td class="num">1</td><td>Pet could be saved without a birth date</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">2</td><td>Light stripe across the top of the profile photo</td><td class="st"><span class="badge low">Fixed</span></td></tr>
+        <tr><td class="num">3</td><td>New pet doesn't appear until refresh</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">4</td><td>Deleting a profile photo does nothing</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">5</td><td>Can't like posts in My Posts</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">6</td><td>Tapping send twice posts a comment twice</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">7</td><td>Friend request can be sent repeatedly</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">8</td><td>Can't see other people's comments</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">9</td><td>Wrong message when rejecting a friend request</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">10</td><td>Tapping a notification opens the feed instead</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">11</td><td>Keyboard covers form fields</td><td class="st"><span class="badge low">Fixed</span></td></tr>
+        <tr><td class="num">12</td><td>Unblocked person stays in the blocked list</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">13</td><td>Notifications don't clear after opening</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">14</td><td>Wrong photo in the chat list</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">15</td><td>Crash after a chat partner deletes their account</td><td class="st"><span class="badge info">Guarded + test</span></td></tr>
+        <tr><td class="num">16</td><td>Deleted user still shows as online</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">17</td><td>Creating a post makes duplicates (Android)</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">18</td><td>Rejecting an invite says &ldquo;user blocked you&rdquo;</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">19</td><td>Pet photo upload fails</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+        <tr><td class="num">20</td><td>Photos from Android don't show</td><td class="st"><span class="badge low">Fixed + test</span></td></tr>
+      </tbody>
+    </table>
+    <p class="footnote">#15: the crash couldn't be reproduced, so the app now handles a deleted chat partner safely, with tests.</p>
+  </div>
+  <div class="card">
+    <h2>75 Further Fixes Found Through Testing</h2>
+    <div class="chart-container tall">
+      <canvas id="fixChart"></canvas>
+    </div>
+    <h3>Highlights</h3>
+    <table>
+      <tbody>
+        <tr><td>Users were logged out every hour</td></tr>
+        <tr><td>Editing posts, photo posts and adding or editing pets didn't save</td></tr>
+        <tr><td>Crashes opening a pet, post or profile; app stuck on the splash screen</td></tr>
+        <tr><td>Live updates stopped after an hour; never worked on Android</td></tr>
+        <tr><td>Signing out left the previous user's data on screen</td></tr>
+        <tr><td>@mentions never suggested anyone</td></tr>
+        <tr><td>Android back button closed the app instead of a sheet</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Testing & pipeline -->
+<h2 class="section-title">Testing &amp; Delivery Pipeline</h2>
+<div class="grid-2">
+  <div class="card">
+    <h2>Automated Tests: April vs October</h2>
+    <div class="chart-container">
+      <canvas id="testChart"></canvas>
+    </div>
+    <p class="footnote">The end-to-end flows drive a real app build through sign-up, login, posting, comments, friends, blocking, pets, chat and notifications, against a test server.</p>
+  </div>
+  <div class="card">
+    <h2>How Changes Reach Users</h2>
+    <table>
+      <thead><tr><th>Step</th><th>April</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Code location</td><td><span class="badge high">Appello systems</span></td><td><span class="badge low">FurBaby GitHub</span></td></tr>
+        <tr><td>Checks on every change</td><td><span class="badge high">Partial</span></td><td><span class="badge low">Tests, types, lint</span></td></tr>
+        <tr><td>Staging server</td><td><span class="badge critical">None</span></td><td><span class="badge low">Yes</span></td></tr>
+        <tr><td>Production deploy</td><td><span class="badge high">Automatic on push</span></td><td><span class="badge low">Manual, after staging</span></td></tr>
+        <tr><td>Rollback</td><td><span class="badge high">Manual</span></td><td><span class="badge low">One step</span></td></tr>
+        <tr><td>Database migrations</td><td><span class="badge medium">On every server start</span></td><td><span class="badge low">Deploy step, rollback-safe</span></td></tr>
+        <tr><td>App builds</td><td><span class="badge high">Appello Codemagic</span></td><td><span class="badge low">Expo, both stores</span></td></tr>
+        <tr><td>Dependency updates</td><td><span class="badge critical">None</span></td><td><span class="badge low">Weekly (app)</span></td></tr>
+      </tbody>
+    </table>
+    <h3>Platform Upgrades</h3>
+    <div class="tech-stack" style="margin-top:0.4rem;">
+      <span class="tech-tag">React Native 0.77 &rarr; 0.79</span>
+      <span class="tech-tag">Expo SDK 52 &rarr; 53</span>
+      <span class="tech-tag">React 18 &rarr; 19</span>
+      <span class="tech-tag">Android target 35 &rarr; 36 (Play requirement)</span>
+      <span class="tech-tag">App 2.5 &rarr; 3.3.0</span>
+    </div>
+  </div>
+</div>
+
+<!-- Beyond the quote -->
+<h2 class="section-title">Beyond the Quote</h2>
+<p class="lede">Problems found along the way that had to be fixed for the app to work, plus the post-launch improvements recommended in April.</p>
+<div class="grid-3">
+  <div class="card">
+    <h2>Kept the App Running</h2>
+    <div class="finding low"><div class="title">App Store outage</div><div class="desc">Since July the App Store app couldn't connect. Its security pins broke when the server certificate renewed. Fixed from 3.2.4 on.</div></div>
+    <div class="finding low"><div class="title">Chat and push restored</div><div class="desc">Appello's Firebase project was deleted. A new one was set up, users moved across, push keys renewed.</div></div>
+    <div class="finding low"><div class="title">Live updates</div><div class="desc">Moved to an encrypted connection; they now work on Android for the first time.</div></div>
+    <div class="finding low"><div class="title">Store requirements</div><div class="desc">Android 16 target and 16 KB memory-page support, both required by Google Play.</div></div>
+    <div class="finding low"><div class="title">Android launch crash</div><div class="desc">Crash reports showed the Android app closing at start on Intel-based devices such as Chromebooks. Reproduced, fixed and confirmed in 3.3.0.</div></div>
+  </div>
+  <div class="card">
+    <h2>Running the Platform</h2>
+    <div class="finding low"><div class="title">Staging environment</div><div class="desc">Changes are tested on a copy before going live. Switches off overnight to save cost.</div></div>
+    <div class="finding low"><div class="title">Monitoring and alerts</div><div class="desc">8 alarms email us if the server, live updates or database have problems. The database can't be deleted by accident.</div></div>
+    <div class="finding low"><div class="title">Admin panel</div><div class="desc">Admin login, a Reports screen, and moderation: delete posts and comments, suspend or reactivate users.</div></div>
+    <div class="finding low"><div class="title">System documentation</div><div class="desc">Architecture, runbook, account inventory and incident checklists.</div></div>
+  </div>
+  <div class="card">
+    <h2>Product</h2>
+    <div class="finding low"><div class="title">Copy and grammar audit</div><div class="desc">118 wording fixes across the app and server messages, all reviewed and applied.</div></div>
+    <div class="finding info"><div class="title">New design preview (3.3.0)</div><div class="desc">Opt-in under Profile &rarr; New design: Search, Zoomies (short videos), comment likes and a refreshed look. With testers; Android release in Google review.</div></div>
+    <div class="finding low"><div class="title">Age 13+ at sign-up</div><div class="desc">New accounts confirm they're 13 or older, and the Terms of Use now state the minimum age, matching the App Store's 13+ rating.</div></div>
+    <div class="finding low"><div class="title">Accessibility</div><div class="desc">Screen-reader labels added across the app (none in April); sheets and dialogs now work with VoiceOver.</div></div>
+  </div>
+</div>
+
+<!-- Next -->
+<h2 class="section-title">What's Next</h2>
+<div class="card" style="margin-bottom:1.25rem;">
+  <div class="finding info"><div class="title">1. Prioritise features</div><div class="desc">Agree which features and improvements matter most for growing the app.</div></div>
+  <div class="finding info"><div class="title">2. Start prototyping</div><div class="desc">Build quick working versions of the top ideas to try in the app, as with the new design preview.</div></div>
+  <div class="finding info"><div class="title">3. Refine and deliver</div><div class="desc">Choose the improvements that work best, polish them and release them.</div></div>
+</div>
+<div class="card" style="margin-bottom:1.25rem;">
+  <h2>Housekeeping</h2>
+  <div class="finding high"><div class="title">Account ownership</div><div class="desc">Confirm who holds the AWS root login, Twilio (SMS) and UniOne (email), and move them to company logins.</div></div>
+  <div class="finding medium"><div class="title">Terms of Use wording</div><div class="desc">Approve the new Eligibility line: &ldquo;You must be at least 13 years old to create an account or use the App.&rdquo;</div></div>
+  <div class="finding medium"><div class="title">Under-16 social media law</div><div class="desc">Check whether Australia's social media minimum age rules apply to FurBaby Social. Separate from this work; a self-declared 13+ tick wouldn't meet them.</div></div>
+  <div class="finding medium"><div class="title">Second admin</div><div class="desc">Add a company account as a second owner on GitHub and Expo, so access doesn't rest with one person.</div></div>
+  <div class="finding medium"><div class="title">Remove Appello from Google Play</div><div class="desc">Three Appello staff still have access to the Play Console. Only the account owner can remove them.</div></div>
+</div>
+
+<div class="footer">
+  FurBaby Social &mdash; Delivery Report &mdash; 2026-10-20
+</div>
+
+</div>
+
+<script>
+const notionColors = {
+  text: '#37352f', muted: '#9b9a97', border: '#e3e2de',
+  green: '#0f7b6c', yellow: '#cb912f', orange: '#d9730d', red: '#e03e3e',
+  blue: '#2eaadc', purple: '#6940a5', pink: '#ad1a72', brown: '#64473a', gray: '#c7c6c3',
+};
+Chart.defaults.color = notionColors.muted;
+Chart.defaults.borderColor = notionColors.border;
+Chart.defaults.font.family = "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+
+// April security findings (app + backend reports) by severity and current status
+new Chart(document.getElementById('secChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Critical', 'High', 'Medium', 'Low / Info'],
+    datasets: [
+      { label: 'Fixed',    data: [2, 4, 2, 1], backgroundColor: notionColors.green },
+      { label: 'Reduced',  data: [1, 2, 1, 2], backgroundColor: notionColors.yellow },
+      { label: 'Accepted', data: [0, 1, 1, 3], backgroundColor: notionColors.gray },
+      { label: 'Open',     data: [0, 0, 4, 5], backgroundColor: notionColors.orange },
+    ]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    scales: { x: { stacked: true, ticks: { stepSize: 1 } }, y: { stacked: true, grid: { display: false }, ticks: { color: notionColors.text } } },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// Further user-facing fixes by theme
+new Chart(document.getElementById('fixChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Layout & navigation', 'Crashes & freezes', 'Connection & chat', 'Login & account', 'Privacy & security', 'Wording & display', 'Feed & comments', 'Changes not saving', 'Photos & video', 'Friends & blocking'],
+    datasets: [{ data: [10, 9, 9, 8, 8, 8, 7, 6, 6, 4], backgroundColor: notionColors.blue, borderRadius: 3 }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    scales: { x: { ticks: { stepSize: 2 } }, y: { grid: { display: false }, ticks: { color: notionColors.text, font: { size: 11 } } } },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// Automated tests, April vs October
+new Chart(document.getElementById('testChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Backend tests', 'App tests', 'End-to-end flows'],
+    datasets: [
+      { label: 'April 2026', data: [13, 0, 0], backgroundColor: notionColors.orange, borderRadius: 3 },
+      { label: 'October 2026', data: [306, 588, 37], backgroundColor: notionColors.green, borderRadius: 3 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: { x: { grid: { display: false }, ticks: { color: notionColors.text } } },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, color: notionColors.text } } }
+  }
+});
+</script>
+
+</body>
+</html>
